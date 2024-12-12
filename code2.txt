@@ -1,0 +1,166 @@
+import React, { useState, useEffect } from 'react';
+import { Map, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const ProfileList = () => {
+  const [profiles, setProfiles] = useState([]);
+  const [filteredProfiles, setFilteredProfiles] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterOptions, setFilterOptions] = useState({});
+  const [showMap, setShowMap] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, []);
+
+  const fetchProfiles = async () => {
+    try {
+      const response = await fetch('/api/profiles');
+      const data = await response.json();
+      setProfiles(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    const filteredProfiles = profiles.filter((profile) => {
+      return profile.name.toLowerCase().includes(query.toLowerCase());
+    });
+    setFilteredProfiles(filteredProfiles);
+  };
+
+  const handleFilter = (options) => {
+    setFilterOptions(options);
+    const filteredProfiles = profiles.filter((profile) => {
+      return Object.keys(options).every((key) => {
+        return profile[key] === options[key];
+      });
+    });
+    setFilteredProfiles(filteredProfiles);
+  };
+
+  const handleSummaryClick = (profile) => {
+    setShowMap(true);
+    setSelectedProfile(profile);
+  };
+
+  return (
+    <div>
+      <SearchBar onSearch={handleSearch} />
+      <FilterOptions onFilter={handleFilter} />
+      <ul>
+        {filteredProfiles.map((profile) => (
+          <li key={profile.id}>
+            <ProfileCard profile={profile} onSummaryClick={handleSummaryClick} />
+          </li>
+        ))}
+      </ul>
+      {showMap && (
+        <MapComponent profiles={[selectedProfile]} />
+      )}
+    </div>
+  );
+};
+
+const ProfileCard = ({ profile, onSummaryClick }) => {
+  return (
+    <div>
+      <h2>{profile.name}</h2>
+      <p>{profile.description}</p>
+      <button onClick={() => onSummaryClick(profile)}>Summary</button>
+    </div>
+  );
+};
+
+const MapComponent = ({ profiles }) => {
+  const [mapCenter, setMapCenter] = useState([37.7749, -122.4194]);
+
+  return (
+    <Map center={mapCenter} zoom={13}>
+      {profiles.map((profile) => (
+        <Marker key={profile.id} position={[profile.latitude, profile.longitude]}>
+          <div>
+            <h2>{profile.name}</h2>
+            <p>{profile.description}</p>
+          </div>
+        </Marker>
+      ))}
+    </Map>
+  );
+};
+
+const SearchBar = ({ onSearch }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    onSearch(searchQuery);
+  };
+
+  return (
+    <form onSubmit={handleSearch}>
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Search profiles"
+      />
+      <button type="submit">Search</button>
+    </form>
+  );
+};
+
+const FilterOptions = ({ onFilter }) => {
+  const [filterOptions, setFilterOptions] = useState({});
+
+  const handleFilter = (event) => {
+    event.preventDefault();
+    onFilter(filterOptions);
+  };
+
+  return (
+    <form onSubmit={handleFilter}>
+      <label>
+        Location:
+        <input
+          type="text"
+          value={filterOptions.location}
+          onChange={(event) => setFilterOptions({ ...filterOptions, location: event.target.value })}
+        />
+      </label>
+      <label>
+        Name:
+        <input
+          type="text"
+          value={filterOptions.name}
+          onChange={(event) => setFilterOptions({ ...filterOptions, name: event.target.value })}
+        />
+      </label>
+      <button type="submit">Filter</button>
+    </form>
+  );
+};
+
+const AdminPanel = () => {
+  const [profiles, setProfiles] = useState([]);
+  const [newProfile, setNewProfile] = useState({});
+
+  const handleAddProfile = (event) => {
+    event.preventDefault();
+    setProfiles([...profiles, newProfile]);
+    setNewProfile({});
+  };
+
+  return (
+    <div>
+      <h2>Admin Panel</h2>
+      <form onSubmit={handleAddProfile}>
+        <label>
+          Name:
+          <input
+            type="text"
+            value={newProfile.name}
+            onChange={(event) => setNewProfile({ ...newProfile, name: event.target.value
